@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-## Created by [Learn By Doing With Steven](https://www.youtube.com/c/LearnByDoingWithSteven)
+## Created by Steven Wang, owner of youtube channel [Learn By Doing With Steven](https://www.youtube.com/@learnbydoingwithsteven)
 
 This application provides a Retrieval-Augmented Generation (RAG) system for querying Bilanci Armonizzati documents from BDAP (Banca Dati Amministrazioni Pubbliche). It utilizes a modern React frontend with a FastAPI backend, supporting both cloud-based (Groq) and local (Ollama) language models.
 
@@ -221,50 +221,50 @@ The FastAPI backend follows a modular structure:
 ## Application Workflow
 
 ### Step 1: Load Reference Documents
-![Load Reference Documents](assets/1.%20load%20reference%20documents.png)
+![Load Reference Documents](assets/1_load_reference_documents.png)
 *Upload your PDF documents to the system through the interface to create a knowledge base.*
 
 ### Step 2: Check Reference Documents
-![Check Reference Documents](assets/2.%20check%20reference%20documents.png)
+![Check Reference Documents](assets/2_check_reference_documents.png)
 *Verify that your documents have been properly loaded and are ready for processing.*
 
 ### Step 3: Verify Document Embedding Database
-![Verify Document Embeddings](assets/3.%20verify%20reference%20documents%20chunk%20embedding%20database.png)
+![Verify Document Embeddings](assets/3_verify_reference_documents_chunk_embedding_database.png)
 *Check that the vector database has been created with embedded document chunks for retrieval.*
 
 ### Step 4: Visualize Embeddings
-![Embedding Visualization](assets/4.%20verify%20reference%20documents%20chunk%20embedding%20database%20scatter%20plots.png)
+![Embedding Visualization](assets/4_verify_reference_documents_chunk_embedding_database_scatter_plots.png)
 *Examine the embedding space visualization to understand document relationships.*
 
 ### Step 5: Analyze Embedding Clusters
-![Embedding Clusters](assets/5.%20verify%20reference%20documents%20chunk%20embedding%20database%20scatter%20plots.png)
+![Embedding Clusters](assets/5_verify_reference_documents_chunk_embedding_database_scatter_plots.png)
 *Analyze how document embeddings cluster together in the semantic space.*
 
 ### Step 6: Review Available Documents
-![Available Documents](assets/6.%20check%20available%20documents%20as%20reference,%20pdf%20and%20txt.png)
+![Available Documents](assets/6_check_available_documents_as_reference_pdf_and_txt.png)
 *Review all available documents in both PDF and text formats before querying.*
 
 ### Step 7: Use the RAG Chat Interface
-![RAG Chat Interface](assets/7.%20rag%20chat%20interface%20with%20groq%20and%20ollama%20options.png)
+![RAG Chat Interface](assets/7_rag_chat_interface_with_groq_and_ollama_options.png)
 *Interact with the chat interface, selecting between Groq cloud models or Ollama local models.*
 
 ### Step 8: Explore Public Database API
-![Public Database API](assets/8.%20public%20database%20api%20communication(under%20development).png)
+![Public Database API](assets/8_public_database_api_communication_under_development.png)
 *The system includes support for public database API communication (under development).*
 
 ### Step 9: Use Additional Visualization Options
-![Additional Visualization](assets/9.%20additional%20options%20to%20use%20microsoft%20formulator%20tool%20to%20add%20additional%20data%20visualization(gemini%20or%20openai%20api%20key,%20with%20option%20using%20ollama).png)
+![Additional Visualization](assets/9_additional_options_to_use_microsoft_formulator_tool_to_add_additional_data_visualization_api_key_options.png)
 *Leverage additional options like Microsoft Formulator for enhanced data visualization using Gemini, OpenAI or Ollama.*
 
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-Copyright 2025 Learn By Doing With Steven and Steven Wang
+Copyright 2025 Steven Wang, owner of Learn By Doing With Steven Channel
 
 ## Credits
 
-- [Learn By Doing With Steven YouTube Channel](https://www.youtube.com/c/LearnByDoingWithSteven)
+- [Learn By Doing With Steven YouTube Channel](https://www.youtube.com/@learnbydoingwithsteven)
 - FastAPI: https://fastapi.tiangolo.com/
 - React: https://reactjs.org/
 - Groq: https://groq.com/
