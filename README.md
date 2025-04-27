@@ -220,41 +220,41 @@ The FastAPI backend follows a modular structure:
 
 ## Application Workflow
 
-### Step 1: Upload Documents
-![Document Upload](assets/screenshot-1745787056535.png)
-*Upload your PDF documents to the system using the Documents tab.*
+### Step 1: Load Reference Documents
+![Load Reference Documents](assets/1.%20load%20reference%20documents.png)
+*Upload your PDF documents to the system through the interface to create a knowledge base.*
 
-### Step 2: Process Documents
-![Document Processing](assets/screenshot-1745786951999.png)
-*Process uploaded documents to extract text for the vector database.*
+### Step 2: Check Reference Documents
+![Check Reference Documents](assets/2.%20check%20reference%20documents.png)
+*Verify that your documents have been properly loaded and are ready for processing.*
 
-### Step 3: Create Vector Database
-![Vector Database Creation](assets/screenshot-1745786967932.png)
-*Create and manage your vector database from the extracted text documents.*
+### Step 3: Verify Document Embedding Database
+![Verify Document Embeddings](assets/3.%20verify%20reference%20documents%20chunk%20embedding%20database.png)
+*Check that the vector database has been created with embedded document chunks for retrieval.*
 
-### Step 4: Select Provider and Model
-![Provider Selection](assets/screenshot-1745786926596.png)
-*Choose between Groq (cloud) or Ollama (local) providers for your language model.*
+### Step 4: Visualize Embeddings
+![Embedding Visualization](assets/4.%20verify%20reference%20documents%20chunk%20embedding%20database%20scatter%20plots.png)
+*Examine the embedding space visualization to understand document relationships.*
 
-### Step 5: Model Selection
-![Model Selection](assets/screenshot-1745787044969.png)
-*Select a specific model from the chosen provider based on your needs.*
+### Step 5: Analyze Embedding Clusters
+![Embedding Clusters](assets/5.%20verify%20reference%20documents%20chunk%20embedding%20database%20scatter%20plots.png)
+*Analyze how document embeddings cluster together in the semantic space.*
 
-### Step 6: Ask Questions
-![Asking Questions](assets/screenshot-1745786890914.png)
-*Ask questions about your documents in the chat interface.*
+### Step 6: Review Available Documents
+![Available Documents](assets/6.%20check%20available%20documents%20as%20reference,%20pdf%20and%20txt.png)
+*Review all available documents in both PDF and text formats before querying.*
 
-### Step 7: Review Answers with Sources
-![Answer with Sources](assets/screenshot-1745786977079.png)
-*Get detailed answers with citations to the relevant document sources.*
+### Step 7: Use the RAG Chat Interface
+![RAG Chat Interface](assets/7.%20rag%20chat%20interface%20with%20groq%20and%20ollama%20options.png)
+*Interact with the chat interface, selecting between Groq cloud models or Ollama local models.*
 
-### Step 8: Examine Source Details
-![Source Details](assets/screenshot-1745786989987.png)
-*View detailed information about source documents including file names and relevance scores.*
+### Step 8: Explore Public Database API
+![Public Database API](assets/8.%20public%20database%20api%20communication(under%20development).png)
+*The system includes support for public database API communication (under development).*
 
-### Step 9: Handle Multiple Queries
-![Conversation History](assets/screenshot-1745787034120.png)
-*Continue the conversation with follow-up questions while maintaining context.*
+### Step 9: Use Additional Visualization Options
+![Additional Visualization](assets/9.%20additional%20options%20to%20use%20microsoft%20formulator%20tool%20to%20add%20additional%20data%20visualization(gemini%20or%20openai%20api%20key,%20with%20option%20using%20ollama).png)
+*Leverage additional options like Microsoft Formulator for enhanced data visualization using Gemini, OpenAI or Ollama.*
 
 ## License
 
