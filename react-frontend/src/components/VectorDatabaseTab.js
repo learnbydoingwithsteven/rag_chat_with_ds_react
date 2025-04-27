@@ -1,0 +1,853 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Box, Button, Typography, Paper, List, ListItem, 
+  ListItemText, ListItemIcon, CircularProgress, Alert, Divider, Grid,
+  Card, CardContent, FormGroup, FormControlLabel, Checkbox,
+  Tabs, Tab
+} from '@mui/material';
+import StorageIcon from '@mui/icons-material/Storage';
+import TextSnippetIcon from '@mui/icons-material/TextSnippet';
+import DataObjectIcon from '@mui/icons-material/DataObject';
+import BubbleChartIcon from '@mui/icons-material/BubbleChart';
+import axios from 'axios';
+import Plot from 'react-plotly.js';
+
+const VectorDatabaseTab = ({ language }) => {
+  const [textFiles, setTextFiles] = useState([]);
+  const [processing, setProcessing] = useState(false);
+  const [processingResults, setProcessingResults] = useState(null);
+  const [processingTaskId, setProcessingTaskId] = useState(null);
+  const [error, setError] = useState(null);
+  const [dbStatus, setDbStatus] = useState(null);
+  
+  // Vector visualization state
+  const [visualizationData, setVisualizationData] = useState(null);
+  const [visualizationLoading, setVisualizationLoading] = useState(false);
+  const [visualizationError, setVisualizationError] = useState(null);
+  const [sources, setSources] = useState([]);
+  const [selectedSources, setSelectedSources] = useState([]);
+  const [visualTabValue, setVisualTabValue] = useState(0);
+
+  // UI text based on selected language
+  const texts = {
+    title: language === 'it' ? 'Creazione Database Vettoriale' : 'Vector Database Creation',
+    subtitle: language === 'it' 
+      ? 'Converti i file di testo in embedding vettoriali per il database' 
+      : 'Convert text files to vector embeddings for the database',
+    currentTexts: language === 'it' ? 'File di testo disponibili' : 'Available text files',
+    createDb: language === 'it' ? 'Crea database vettoriale' : 'Create vector database',
+    processingStatus: language === 'it' ? 'Stato elaborazione' : 'Processing status',
+    noFiles: language === 'it' ? 'Nessun file di testo trovato' : 'No text files found',
+    processingStarted: language === 'it' ? 'Elaborazione avviata' : 'Processing started',
+    checkingStatus: language === 'it' ? 'Controllo stato...' : 'Checking status...',
+    completed: language === 'it' ? 'Completato' : 'Completed',
+    error: language === 'it' ? 'Errore' : 'Error',
+    running: language === 'it' ? 'In esecuzione' : 'Running',
+    fileName: language === 'it' ? 'Nome file' : 'Filename',
+    status: language === 'it' ? 'Stato' : 'Status',
+    details: language === 'it' ? 'Dettagli' : 'Details',
+    refreshList: language === 'it' ? 'Aggiorna lista' : 'Refresh list',
+    dbStatusTitle: language === 'it' ? 'Stato del database' : 'Database Status',
+    dbStatusCheck: language === 'it' ? 'Controlla stato del database' : 'Check database status',
+    dbStatusChecking: language === 'it' ? 'Controllo in corso...' : 'Checking...',
+    dbStatusOk: language === 'it' ? 'Database OK' : 'Database OK',
+    dbStatusNotFound: language === 'it' ? 'Database non trovato' : 'Database not found',
+    dbStats: language === 'it' ? 'Statistiche database' : 'Database statistics',
+    documents: language === 'it' ? 'documenti' : 'documents',
+    paragraphs: language === 'it' ? 'paragrafi' : 'paragraphs',
+    visualization: language === 'it' ? 'Visualizzazione Vettori' : 'Vector Visualization',
+    visualizationDescription: language === 'it' ? 'Visualizza embedding dei documenti in 2D' : 'Visualize document embeddings in 2D',
+    loadVisualization: language === 'it' ? 'Carica visualizzazione' : 'Load visualization',
+    selectSources: language === 'it' ? 'Seleziona documenti' : 'Select documents',
+    selectAll: language === 'it' ? 'Seleziona tutti' : 'Select all',
+    pcaTab: 'PCA',
+    tsneTab: 't-SNE',
+    pcaExplained: language === 'it' ? 'Varianza spiegata' : 'Explained variance',
+    documentDetails: language === 'it' ? 'Dettagli documento' : 'Document details',
+    hoverInstructions: language === 'it' ? 'Passa sopra i punti per vedere i dettagli' : 'Hover over points to see details',
+  };
+
+  // Load text files on component mount and language change
+  const fetchTextFiles = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/files/text');
+      const files = response.data.files ? response.data.files.map(file => file.filename) : [];
+      setTextFiles(files);
+    } catch (error) {
+      console.error('Error fetching text files:', error);
+      setTextFiles([]);
+      setError(texts.error + ': ' + (error.response?.data?.detail || error.message));
+    }
+  }, [texts.error]);
+
+  // Check database status
+  const checkDatabaseStatus = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/check-database');
+      setDbStatus(response.data);
+    } catch (error) {
+      console.error('Error checking database status:', error);
+      setDbStatus(null);
+      setError(texts.error + ': ' + (error.response?.data?.detail || error.message));
+    }
+  }, [texts.error]);
+
+  useEffect(() => {
+    fetchTextFiles();
+    checkDatabaseStatus();
+  }, [language, fetchTextFiles, checkDatabaseStatus]);
+
+  // Fetch available document sources for visualization
+  const fetchSources = useCallback(async () => {
+    try {
+      // First get the list of available text files
+      const textResponse = await axios.get('http://localhost:8000/files/text');
+      let filesList = textResponse.data.files ? textResponse.data.files.map(file => file.filename) : [];
+
+      // Then check for actual sources in the vector database
+      try {
+        const vizResponse = await axios.get('http://localhost:8000/visualization');
+        if (vizResponse.data && !vizResponse.data.error) {
+          // Check if we got any visualization data
+          if (vizResponse.data.pca_data && vizResponse.data.pca_data.length > 0) {
+            // Extract unique sources from the visualization data
+            const uniqueSources = new Set();
+            vizResponse.data.pca_data.forEach(point => {
+              if (point.source) {
+                // Get just the filename from the full path
+                const baseSource = point.source.split('/').pop();
+                uniqueSources.add(baseSource);
+              }
+            });
+
+            console.log(`Found ${uniqueSources.size} unique sources in visualization data`);
+
+            if (uniqueSources.size > 0) {
+              // Convert to array and sort
+              const dbSources = Array.from(uniqueSources).sort();
+
+              // Try to match with full paths from filesList
+              const matchedSources = [];
+              for (const baseSource of dbSources) {
+                const match = filesList.find(file => file.endsWith(baseSource));
+                matchedSources.push(match || baseSource);
+              }
+
+              filesList = matchedSources;
+            }
+          }
+        }
+      } catch (vizErr) {
+        console.warn('Error checking visualization data:', vizErr);
+        // Still continue with text files
+      }
+
+      setSources(filesList);
+      console.log(`Loaded ${filesList.length} sources for visualization`);
+    } catch (err) {
+      console.error('Error fetching sources:', err);
+      setSources([]);
+      setVisualizationError(texts.error + ': ' + (err.response?.data?.detail || err.message));
+    }
+  }, [texts.error]);
+
+  useEffect(() => {
+    if (textFiles && textFiles.length > 0) {
+      // Use text files as sources if we have them
+      setSources(textFiles);
+    } else {
+      // Otherwise try to fetch from API
+      fetchSources();
+    }
+  }, [textFiles, fetchSources]);
+
+  // Check processing status
+  const checkProcessingStatus = useCallback(async (taskId) => {
+    if (!taskId) return;
+
+    try {
+      const response = await axios.get(`http://localhost:8000/vector-db-status/${taskId}`);
+      
+      if (response.data.status === 'completed') {
+        setProcessing(false);
+        setProcessingTaskId(null);
+        setProcessingResults({
+          title: texts.completed,
+          results: response.data.results,
+          status: 'completed'
+        });
+        // Check database status after completion
+        checkDatabaseStatus();
+      } else if (response.data.status === 'error') {
+        setProcessing(false);
+        setProcessingTaskId(null);
+        setError(texts.error + ': ' + response.data.error);
+      } else {
+        // Still running
+        setProcessingResults({
+          title: texts.checkingStatus,
+          status: 'running'
+        });
+      }
+    } catch (error) {
+      console.error('Error checking processing status:', error);
+      setError(texts.error + ': ' + (error.response?.data?.detail || error.message));
+      setProcessing(false);
+      setProcessingTaskId(null);
+    }
+  }, [checkDatabaseStatus, texts.completed, texts.checkingStatus, texts.error]);
+
+  // Poll processing status if a task is running
+  useEffect(() => {
+    let intervalId;
+    if (processingTaskId) {
+      intervalId = setInterval(() => {
+        checkProcessingStatus(processingTaskId);
+      }, 2000);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [processingTaskId, checkProcessingStatus]);
+
+  // Create vector database
+  const handleCreateVectorDatabase = useCallback(async () => {
+    setProcessing(true);
+    setProcessingResults(null);
+    setError(null);
+    
+    try {
+      const response = await axios.post('http://localhost:8000/create-vector-database');
+      setProcessingTaskId(response.data.task_id);
+      setProcessingResults({
+        title: texts.processingStarted,
+        status: 'running'
+      });
+    } catch (error) {
+      console.error('Error creating vector database:', error);
+      setError(texts.error + ': ' + (error.response?.data?.detail || error.message));
+      setProcessing(false);
+    }
+  }, [texts.error, texts.processingStarted]);
+
+  // Handle source selection for visualization
+  const handleSourceSelection = (source) => {
+    // Handle source object or string
+    const sourceValue = typeof source === 'object' ? source.filename : source;
+    
+    setSelectedSources(prev => {
+      // Check if source is already selected
+      const isSelected = prev.some(s => {
+        const currentValue = typeof s === 'object' ? s.filename : s;
+        return currentValue === sourceValue;
+      });
+      
+      if (isSelected) {
+        // Remove the source
+        return prev.filter(s => {
+          const currentValue = typeof s === 'object' ? s.filename : s;
+          return currentValue !== sourceValue;
+        });
+      } else {
+        // Add the source
+        return [...prev, source];
+      }
+    });
+  };
+  
+  // Handle "Select All" checkbox
+  const handleSelectAll = (event) => {
+    if (event.target.checked) {
+      // Select all sources
+      setSelectedSources([...sources]);
+    } else {
+      // Deselect all sources
+      setSelectedSources([]);
+    }
+  };
+  
+  // Load vector visualization data
+  const loadVisualization = useCallback(async () => {
+    setVisualizationLoading(true);
+    setVisualizationError(null);
+    
+    try {
+      // Check if we have sources selected
+      if (sources.length === 0) {
+        setVisualizationError(language === 'it' 
+          ? 'Nessun documento disponibile. Caricare alcuni file di testo.'
+          : 'No documents available. Upload some text files.');
+        return;
+      }
+      
+      // Use selected sources or all sources if none selected
+      const sourcesToVisualize = selectedSources.length > 0 ? selectedSources : sources;
+      
+      console.log(`Loading real vector visualization data for sources: ${sourcesToVisualize.join(', ').substring(0, 100)}...`);
+      
+      // Prepare the query parameters
+      let queryParams = '';
+      if (sourcesToVisualize.length > 0) {
+        // Add each source as a query parameter
+        queryParams = sourcesToVisualize
+          .map(source => `selected_sources=${encodeURIComponent(source)}`)
+          .join('&');
+      }
+      
+      // Call backend API to get visualization data
+      console.log(`Calling visualization API with params: ${queryParams}`);
+      const response = await axios.get(`http://localhost:8000/visualization${queryParams ? '?' + queryParams : ''}`);
+      console.log('Received response from visualization API:', response.data);
+      
+      // Check if we got valid data
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+      
+      // Check if we have data
+      if (!response.data.pca_data || !response.data.tsne_data) {
+        throw new Error('No visualization data received from the server');
+      }
+      
+      // Format the data for display
+      const visualData = {
+        pca_data: response.data.pca_data.map(item => ({
+          ...item,
+          // Ensure display_name is set by extracting from source if needed
+          display_name: item.display_name || item.source.split('/').pop().replace(/\.txt$/i, '')
+        })),
+        tsne_data: response.data.tsne_data.map(item => ({
+          ...item,
+          // Ensure display_name is set by extracting from source if needed
+          display_name: item.display_name || item.source.split('/').pop().replace(/\.txt$/i, '')
+        })),
+        explained_variance: response.data.explained_variance || 0,
+        document_counts: response.data.document_counts || {}
+      };
+      
+      console.log(`PCA data points: ${visualData.pca_data.length}, t-SNE data points: ${visualData.tsne_data.length}`);
+      setVisualizationData(visualData);
+      
+      // If we have no data, show a warning
+      if (visualData.pca_data.length === 0 && visualData.tsne_data.length === 0) {
+        setVisualizationError(language === 'it'
+          ? 'Nessun dato di embedding trovato nel database. Prova a rigenerare il database.'
+          : 'No embedding data found in the database. Try regenerating the database.');
+      }
+    } catch (err) {
+      console.error('Error loading visualization data:', err);
+      setVisualizationError(texts.error + ': ' + err.message);
+    } finally {
+      setVisualizationLoading(false);
+    }
+  }, [language, sources, selectedSources, texts.error]);
+  
+  // Handle visualization tab change
+  const handleVisualTabChange = (event, newValue) => {
+    setVisualTabValue(newValue);
+  };
+
+  // Function to manually trigger database status check
+  const refreshDatabaseStatus = async () => {
+    setDbStatus({ checking: true });
+    await checkDatabaseStatus();
+  };
+
+  // This duplicate declaration has been removed
+
+  // This duplicate declaration has been removed
+
+  // Render PCA and t-SNE visualizations with document-wise color differentiation
+  const renderVisualizations = () => {
+    if (!visualizationData || !visualizationData.pca_data || !visualizationData.tsne_data) {
+      return (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="body1" color="text.secondary">
+            {texts.loadVisualization}
+          </Typography>
+        </Box>
+      );
+    }
+  
+    const { pca_data, tsne_data, explained_variance } = visualizationData;
+    
+    // Color palette for document differentiation
+    const fixedColors = [
+      '#e41a1c', // red
+      '#377eb8', // blue
+      '#4daf4a', // green 
+      '#ff7f00', // orange
+      '#984ea3', // purple 
+      '#f781bf', // pink
+      '#a65628', // brown 
+      '#ffff33', // yellow
+      '#999999', // grey
+      '#66c2a5', // mint
+      '#fc8d62', // coral
+      '#8da0cb', // light blue
+      '#e78ac3', // light pink
+      '#a6d854', // light green
+      '#ffd92f', // light yellow
+      '#e5c494', // tan
+      '#b3b3b3', // light grey
+      '#8dd3c7', // turquoise
+      '#bebada', // lavender
+      '#fb8072', // salmon
+      '#80b1d3', // sky blue
+      '#fdb462', // light orange
+      '#b3de69', // lime
+      '#fccde5', // pale pink
+      '#d9d9d9', // silver
+      '#bc80bd'  // orchid
+    ];
+    
+    // Extract all unique document IDs
+    const docIdSet = new Set();
+    const uniqueDocIds = [];
+    
+    // First pass - collect all unique document IDs
+    pca_data.forEach(point => {
+      if (point.document_id && !docIdSet.has(point.document_id)) {
+        docIdSet.add(point.document_id);
+        uniqueDocIds.push(point.document_id);
+      }
+    });
+    
+    // Sort for consistent color assignment
+    uniqueDocIds.sort();
+    
+    // Create document ID to display name mapping
+    const docIdToDisplayName = {};
+    pca_data.forEach(point => {
+      if (point.document_id && !docIdToDisplayName[point.document_id] && point.display_name) {
+        docIdToDisplayName[point.document_id] = point.display_name;
+      }
+    });
+    
+    // Assign colors to document IDs
+    const docIdToColor = {};
+    uniqueDocIds.forEach((docId, index) => {
+      docIdToColor[docId] = fixedColors[index % fixedColors.length];
+    });
+    
+    // Group data by document ID for PCA
+    const pcaPlotData = [];
+    uniqueDocIds.forEach(docId => {
+      const docPoints = pca_data.filter(p => p.document_id === docId);
+      if (docPoints.length === 0) return;
+      
+      const displayName = docIdToDisplayName[docId] || docId;
+      const color = docIdToColor[docId];
+      
+      pcaPlotData.push({
+        x: docPoints.map(p => p.x),
+        y: docPoints.map(p => p.y),
+        type: 'scatter',
+        mode: 'markers',
+        name: displayName,
+        marker: {
+          color: color,
+          size: 8,
+          line: { color: 'white', width: 1 }
+        },
+        hoverinfo: 'text',
+        hovertext: docPoints.map(p => `${displayName}`)
+      });
+    });
+    
+    // Group data by document ID for t-SNE
+    const tsnePlotData = [];
+    uniqueDocIds.forEach(docId => {
+      const docPoints = tsne_data.filter(p => p.document_id === docId);
+      if (docPoints.length === 0) return;
+      
+      const displayName = docIdToDisplayName[docId] || docId;
+      const color = docIdToColor[docId]; // Use same color for consistency
+      
+      tsnePlotData.push({
+        x: docPoints.map(p => p.x),
+        y: docPoints.map(p => p.y),
+        type: 'scatter',
+        mode: 'markers',
+        name: displayName,
+        marker: {
+          color: color,
+          size: 8,
+          line: { color: 'white', width: 1 }
+        },
+        hoverinfo: 'text',
+        hovertext: docPoints.map(p => `${displayName}`)
+      });
+    });
+    
+    // Fallback if we have no traces but have data points
+    if (pcaPlotData.length === 0 && pca_data.length > 0) {
+      console.warn("Fallback: No document grouping available, using source paths");
+      
+      // Group by source
+      const uniqueSources = [...new Set(pca_data.map(p => p.source))].sort();
+      
+      uniqueSources.forEach((source, index) => {
+        const points = pca_data.filter(p => p.source === source);
+        const displayName = points[0]?.display_name || source.split('/').pop().replace(/\.txt$/i, '');
+        const color = fixedColors[index % fixedColors.length];
+        
+        pcaPlotData.push({
+          x: points.map(p => p.x),
+          y: points.map(p => p.y),
+          type: 'scatter',
+          mode: 'markers',
+          name: displayName,
+          marker: {
+            color: color,
+            size: 8,
+            line: { color: 'white', width: 1 }
+          },
+          hoverinfo: 'text',
+          hovertext: points.map(p => `${displayName}`)
+        });
+        
+        // Do the same for t-SNE
+        const tsnePoints = tsne_data.filter(p => p.source === source);
+        tsnePlotData.push({
+          x: tsnePoints.map(p => p.x),
+          y: tsnePoints.map(p => p.y),
+          type: 'scatter',
+          mode: 'markers',
+          name: displayName,
+          marker: {
+            color: color,
+            size: 8,
+            line: { color: 'white', width: 1 }
+          },
+          hoverinfo: 'text',
+          hovertext: tsnePoints.map(p => `${displayName}`)
+        });
+      });
+    }
+    
+    // Layout options
+    const layoutOptions = {
+      autosize: true,
+      showlegend: false,
+      hovermode: 'closest',
+      margin: { l: 40, r: 40, b: 40, t: 10, pad: 0 },
+      xaxis: { zeroline: false, showgrid: true, gridcolor: '#e0e0e0' },
+      yaxis: { zeroline: false, showgrid: true, gridcolor: '#e0e0e0' },
+      plot_bgcolor: '#f8f9fa',
+      paper_bgcolor: '#f8f9fa',
+      clickmode: 'event+select',
+      dragmode: 'zoom'
+    };
+    
+    return (
+      <Box sx={{ mt: 2 }}>
+        <Tabs
+          value={visualTabValue}
+          onChange={handleVisualTabChange}
+          variant="fullWidth"
+          sx={{ mb: 2 }}
+        >
+          <Tab label={texts.pcaTab} icon={<DataObjectIcon />} />
+          <Tab label={texts.tsneTab} icon={<BubbleChartIcon />} />
+        </Tabs>
+        
+        {visualTabValue === 0 && (
+          <Box>
+            <Typography variant="caption" display="block" sx={{ mb: 1, textAlign: 'center' }}>
+              {texts.pcaExplained}: {(explained_variance * 100).toFixed(2)}%
+            </Typography>
+            <Box sx={{ height: 400, width: '100%' }}>
+              <Plot
+                data={pcaPlotData}
+                layout={{...layoutOptions, title: texts.pcaTab}}
+                useResizeHandler={true}
+                style={{ width: '100%', height: '100%' }}
+                config={{ 
+                  responsive: true, 
+                  displayModeBar: true,
+                  displaylogo: false,
+                  modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+                  toImageButtonOptions: { scale: 2 }
+                }}
+              />
+            </Box>
+          </Box>
+        )}
+        
+        {visualTabValue === 1 && (
+          <Box sx={{ height: 400, width: '100%' }}>
+              <Plot
+                data={tsnePlotData}
+                layout={{...layoutOptions, title: texts.tsneTab}}
+                useResizeHandler={true}
+                style={{ width: '100%', height: '100%' }}
+                config={{ 
+                  responsive: true, 
+                  displayModeBar: true,
+                  displaylogo: false,
+                  modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+                  toImageButtonOptions: { scale: 2 }
+                }}
+                onClick={(data) => console.log(data)}
+              />
+          </Box>
+        )}
+        
+        <Typography variant="caption" display="block" sx={{ mt: 1, textAlign: 'center', fontStyle: 'italic' }}>
+          {texts.hoverInstructions}
+        </Typography>
+      </Box>
+    );
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        {texts.title}
+      </Typography>
+      
+      <Typography variant="body1" paragraph>
+        {texts.subtitle}
+      </Typography>
+      
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {/* Database Status Section */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {texts.dbStatusTitle}
+        </Typography>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<StorageIcon />}
+            onClick={checkDatabaseStatus}
+            sx={{ mr: 2 }}
+          >
+            {texts.dbStatusCheck}
+          </Button>
+          
+          {dbStatus?.checking ? (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+              <Typography variant="body2">{texts.dbStatusChecking}</Typography>
+            </Box>
+          ) : dbStatus?.exists ? (
+            <Typography variant="body2" color="success.main">
+              {texts.dbStatusOk}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="error.main">
+              {texts.dbStatusNotFound}
+            </Typography>
+          )}
+        </Box>
+        
+        {dbStatus?.exists && dbStatus?.stats && (
+          <Card variant="outlined" sx={{ mt: 2 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                {texts.dbStats}
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="body2">
+                    {dbStatus.stats.documents} {texts.documents}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2">
+                    {dbStatus.stats.paragraphs} {texts.paragraphs}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        )}
+      </Paper>
+      
+      {/* Create Vector Database Section */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {texts.createDb}
+        </Typography>
+        
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<StorageIcon />}
+          onClick={handleCreateVectorDatabase}
+          disabled={processing || textFiles.length === 0}
+          sx={{ mb: 2 }}
+        >
+          {processing ? <CircularProgress size={24} /> : texts.createDb}
+        </Button>
+        
+        {processingResults && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle1">
+              {processingResults.title}
+            </Typography>
+            
+            {processingResults.status === 'running' && (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                <Typography variant="body2">
+                  {texts.running}
+                </Typography>
+              </Box>
+            )}
+            
+            {processingResults.results && (
+              <List>
+                {processingResults.results.map((result, index) => (
+                  <ListItem key={index} divider={index < processingResults.results.length - 1}>
+                    <ListItemText
+                      primary={result.file}
+                      secondary={
+                        <>
+                          <Typography component="span" variant="body2" color={result.status === 'success' ? 'success.main' : 'error.main'}>
+                            {result.status === 'success' ? texts.completed : texts.error}
+                          </Typography>
+                          {result.status === 'success' && (
+                            <Typography component="span" variant="body2">
+                              {` • ${result.paragraphs} ${texts.paragraphs} • ID: ${result.document_id}`}
+                            </Typography>
+                          )}
+                          {result.status === 'error' && (
+                            <Typography component="span" variant="body2">
+                              {` • ${result.message}`}
+                            </Typography>
+                          )}
+                        </>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+        )}
+      </Paper>
+      
+      {/* Vector Visualization Section */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {texts.visualization}
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 2 }}>
+          {texts.visualizationDescription}
+        </Typography>
+
+        {/* Document Selection */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            {texts.selectSources}
+          </Typography>
+          
+          <FormGroup>
+            <FormControlLabel 
+              control={
+                <Checkbox 
+                  checked={selectedSources.length === sources.length && sources.length > 0}
+                  onChange={handleSelectAll}
+                  disabled={sources.length === 0}
+                />
+              } 
+              label={texts.selectAll} 
+            />
+          </FormGroup>
+          
+          <List dense sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1 }}>
+            {sources.map((source, index) => {
+              const isSelected = selectedSources.includes(source);
+              const displayName = source.split('/').pop().replace(/\.txt$/i, '');
+              
+              return (
+                <ListItem key={index} dense button onClick={() => handleSourceSelection(source)}>
+                  <ListItemIcon>
+                    <Checkbox 
+                      edge="start"
+                      checked={selectedSources.some(s => 
+                        (typeof s === 'object' && typeof source === 'object') 
+                          ? s.filename === source.filename 
+                          : (typeof s === 'object' ? s.filename : s) === (typeof source === 'object' ? source.filename : source)
+                      )}
+                      tabIndex={-1}
+                      disableRipple
+                    />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={typeof source === 'object' ? source.filename : source}
+                  />
+                </ListItem>
+              );
+            })}
+          </List>
+          
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={loadVisualization}
+            disabled={visualizationLoading}
+            sx={{ mt: 2 }}
+          >
+            {visualizationLoading ? <CircularProgress size={24} /> : texts.loadVisualization}
+          </Button>
+          
+          {visualizationError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {visualizationError}
+            </Alert>
+          )}
+        </Box>
+        
+        {/* Visualization Display */}
+        {renderVisualizations()}
+      </Paper>
+      
+      {/* Text Files List Section */}
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">
+            {texts.currentTexts}
+          </Typography>
+          <Button variant="outlined" onClick={fetchTextFiles} size="small">
+            {texts.refreshList}
+          </Button>
+        </Box>
+        
+        <Divider sx={{ mb: 2 }} />
+        
+        {textFiles.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {texts.noFiles}
+          </Typography>
+        ) : (
+          <List>
+            {textFiles.map((file, index) => (
+              <ListItem key={index} divider={index < textFiles.length - 1}>
+                <ListItemText 
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <TextSnippetIcon sx={{ mr: 1, fontSize: 'small' }} />
+                      {file}
+                    </Box>
+                  } 
+                />
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </Paper>
+    </Box>
+  );
+};
+
+export default VectorDatabaseTab;
