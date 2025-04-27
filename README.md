@@ -218,27 +218,43 @@ The FastAPI backend follows a modular structure:
    - Send to selected LLM (Groq or Ollama)
    - Display response with source references
 
-## Screenshot Tour
+## Application Workflow
 
-### Main Chat Interface
-![Chat Interface](assets/screenshot-1745786890914.png)
-*The main chat interface allows you to ask questions and get contextual answers from your documents.*
+### Step 1: Upload Documents
+![Document Upload](assets/screenshot-1745787056535.png)
+*Upload your PDF documents to the system using the Documents tab.*
 
-### Provider and Model Selection
-![Model Selection](assets/screenshot-1745786926596.png)
-*Choose between Groq (cloud) and Ollama (local) models for different needs.*
+### Step 2: Process Documents
+![Document Processing](assets/screenshot-1745786951999.png)
+*Process uploaded documents to extract text for the vector database.*
 
-### Document Management
-![Document Management](assets/screenshot-1745786951999.png)
-*Upload, view, and process documents in a user-friendly interface.*
+### Step 3: Create Vector Database
+![Vector Database Creation](assets/screenshot-1745786967932.png)
+*Create and manage your vector database from the extracted text documents.*
 
-### Vector Database Management
-![Vector Database](assets/screenshot-1745786967932.png)
-*Create and manage your vector database for efficient retrieval.*
+### Step 4: Select Provider and Model
+![Provider Selection](assets/screenshot-1745786926596.png)
+*Choose between Groq (cloud) or Ollama (local) providers for your language model.*
 
-### Results with Source Citations
-![Results with Citations](assets/screenshot-1745786977079.png)
-*Get answers with citations to the relevant passages in your documents.*
+### Step 5: Model Selection
+![Model Selection](assets/screenshot-1745787044969.png)
+*Select a specific model from the chosen provider based on your needs.*
+
+### Step 6: Ask Questions
+![Asking Questions](assets/screenshot-1745786890914.png)
+*Ask questions about your documents in the chat interface.*
+
+### Step 7: Review Answers with Sources
+![Answer with Sources](assets/screenshot-1745786977079.png)
+*Get detailed answers with citations to the relevant document sources.*
+
+### Step 8: Examine Source Details
+![Source Details](assets/screenshot-1745786989987.png)
+*View detailed information about source documents including file names and relevance scores.*
+
+### Step 9: Handle Multiple Queries
+![Conversation History](assets/screenshot-1745787034120.png)
+*Continue the conversation with follow-up questions while maintaining context.*
 
 ## License
 
